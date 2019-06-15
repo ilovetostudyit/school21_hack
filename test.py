@@ -14,50 +14,50 @@ autodataset = False
 i = 0
 firstFrame = None
 sdThresh = 15
-		
+        
 def click_and_crop(event, x, y, flags, param):
-	# grab references to the global variables
-	global refPt, cropping, calibrate, text
+    # grab references to the global variables
+    global refPt, cropping, calibrate, text
  
-	# if the left mouse button was clicked, record the starting
-	# (x, y) coordinates and indicate that cropping is being
-	# performed
-	if calibrate == True:
-		if event == cv2.EVENT_LBUTTONDOWN:
-			refPt = [(x, y)]
-			cropping = True
-	
-		# check to see if the left mouse button was released
-		elif event == cv2.EVENT_LBUTTONUP:
-			# record the ending (x, y) coordinates and indicate that
-			# the cropping operation is finished
-			refPt.append((x, y))
-			cropping = False
-			calibrate = False
-			text = "ROI setted up"
-			printtext(frame, text)
-			cv2.imshow("frame",frame)
+    # if the left mouse button was clicked, record the starting
+    # (x, y) coordinates and indicate that cropping is being
+    # performed
+    if calibrate == True:
+        if event == cv2.EVENT_LBUTTONDOWN:
+            refPt = [(x, y)]
+            cropping = True
+    
+        # check to see if the left mouse button was released
+        elif event == cv2.EVENT_LBUTTONUP:
+            # record the ending (x, y) coordinates and indicate that
+            # the cropping operation is finished
+            refPt.append((x, y))
+            cropping = False
+            calibrate = False
+            text = "ROI setted up"
+            printtext(frame, text)
+            cv2.imshow("frame",frame)
 
 def printtext(frame, text):
-	font = cv2.FONT_HERSHEY_SIMPLEX
-	allign = (10, 20)
-	fontScale = 1
-	fontColor = (255,0,0)
-	lineType = 2
-	cv2.putText(frame,text, 
-		allign, 
-		font, 
-		fontScale,
-		fontColor,
-		lineType)
+    font = cv2.FONT_HERSHEY_SIMPLEX
+    allign = (10, 20)
+    fontScale = 1
+    fontColor = (255,0,0)
+    lineType = 2
+    cv2.putText(frame,text, 
+        allign, 
+        font, 
+        fontScale,
+        fontColor,
+        lineType)
 
 def distMap(frame1, frame2):
-	frame1_32 = np.float32(frame1)
-	frame2_32 = np.float32(frame2)
-	diff32 = frame1_32 - frame2_32
-	norm32 = np.sqrt(diff32[:,:,0]**2 + diff32[:,:,1]**2 + diff32[:,:,2]**2)/np.sqrt(255**2 + 255**2 + 255**2)
-	dist = np.uint8(norm32*255)
-	return dist
+    frame1_32 = np.float32(frame1)
+    frame2_32 = np.float32(frame2)
+    diff32 = frame1_32 - frame2_32
+    norm32 = np.sqrt(diff32[:,:,0]**2 + diff32[:,:,1]**2 + diff32[:,:,2]**2)/np.sqrt(255**2 + 255**2 + 255**2)
+    dist = np.uint8(norm32*255)
+    return dist
 
 ap = argparse.ArgumentParser()
 ap.add_argument("-v", "--video", help="path to the video file")
@@ -66,88 +66,98 @@ args = vars(ap.parse_args())
  
 # if the video argument is None, then we are reading from webcam
 if args.get("video", None) is None:
-	cap = VideoStream(src=0).start()
-	time.sleep(2.0)
+    cap = VideoStream(src=0).start()
+    time.sleep(2.0)
  
 # otherwise, we are reading from a video file
 else:
-	cap = cv2.VideoCapture(args["video"])
+    cap = cv2.VideoCapture(args["video"])
 #NEED TO ANALYZE GREATEST NUMBER IN THE FOLDER
 a = 0
 mass = []
 for filename in os.listdir("images"):
-	basename, extension = os.path.splitext(filename)
-	project, number = basename.split('_')
-	mass.append(int(number))
+    basename, extension = os.path.splitext(filename)
+    project, number = basename.split('_')
+    mass.append(int(number))
 if mass:
-	a = max(mass) + 1
+    a = max(mass) + 1
 text = "ROI is not setted"
 while(True):
-	# Capture frame-by-frame
-	frame = cap.read()
-	frame = frame if args.get("video", None) is None else frame[1]
-	clone = frame.copy()
-	if autodataset == True:
-		if firstFrame is None:
-			firstFrame = roi
-		dist = distMap(firstFrame, roi)
-		mod = cv2.GaussianBlur(dist, (9,9), 0)
-		_, thresh = cv2.threshold(mod, 100, 255, 0)
-		_, stDev = cv2.meanStdDev(mod)
-		if stDev > sdThresh:
-			print(stDev)
-			print("Motion detected.. Do something!!!")
-		firstFrame = roi
-	printtext(frame, text)
-	cv2.namedWindow("frame")
-	cv2.setMouseCallback("frame", click_and_crop)
-	key = cv2.waitKey(1) & 0xFF
-	# if the 'r' key is pressed, reset the cropping region
-	if key == ord("r"):
-		frame = clone.copy()
-		cv2.imshow("frame", frame)
-		refPt = []
-		calibrate = True
-		text = "ROI is not setted"
-		cv2.destroyWindow("ROI")
-		saved = False
-		autodataset = False
-	# if the 'c' key is pressed, break from the loop
-	elif key == ord("a") and saved == True:
-		autodataset = True
-		text = "AUTODATASET COLLECTION"
-	elif key == ord("q"):
-		break
-	elif key == ord("s") and calibrate == False:
-		try:
-			cv2.imwrite( "images/ROI_" + str(a) +".jpg", roi)
-			a = a + 1
-			text = "ROI SAVED"
-			saved = True
-		except Exception as e:
-				print(e)
+    # Capture frame-by-frame
+    frame = cap.read()
+    frame = frame if args.get("video", None) is None else frame[1]
+    clone = frame.copy()
+    if autodataset == True:
+        if firstFrame is None:
+            firstFrame = roi
+        dist = distMap(firstFrame, roi)
+        mod = cv2.GaussianBlur(dist, (9,9), 0)
+        _, thresh = cv2.threshold(mod, 100, 255, 0)
+        _, stDev = cv2.meanStdDev(mod)
+        if stDev > sdThresh:
+            print(stDev)
+            if a < 20:
+                    try:
+                       cv2.imwrite("images/ROI_" + str(a) +".jpg", roi) 
+                       a = a + 1
+                    except Exception as e:
+                        print(e)
+            else:
+                text = "DATASET COMPLETE"
+                autodataset = False
+   
+        firstFrame = roi
+    printtext(frame, text)
+    cv2.namedWindow("frame")
+    cv2.setMouseCallback("frame", click_and_crop)
+    key = cv2.waitKey(1) & 0xFF
+    # if the 'r' key is pressed, reset the cropping region
+    if key == ord("r"):
+        frame = clone.copy()
+        cv2.imshow("frame", frame)
+        refPt = []
+        calibrate = True
+        text = "ROI is not setted"
+        cv2.destroyWindow("ROI")
+        saved = False
+        autodataset = False
+        firstFrame = None
+    # if the 'c' key is pressed, break from the loop
+    elif key == ord("a") and saved == True:
+        autodataset = True
+        text = "AUTODATASET COLLECTION"
+    elif key == ord("q"):
+        break
+    elif key == ord("s") and calibrate == False:
+        try:
+            cv2.imwrite( "images/ROI_" + str(a) +".jpg", roi)
+            a = a + 1
+            text = "ROI SAVED"
+            saved = True
+        except Exception as e:
+                print(e)
 
-	elif key == ord("d"):
-		folder = 'images'
-		for the_file in os.listdir(folder):
-			file_path = os.path.join(folder, the_file)
-			try:
-				a = 0
-				if os.path.isfile(file_path):
-					os.unlink(file_path)
-			except Exception as e:
-				print(e)
-	if len(refPt) == 2:
-		roi = clone[min(refPt[0][1], refPt[1][1]):max(refPt[1][1], refPt[0][1]), min(refPt[0][0], refPt[1][0]):max(refPt[0][0], refPt[1][0])]
-		if autodataset:
-			cv2.rectangle(frame, refPt[0], refPt[1], (255, 0, 0), 2)
-		else:
-  			cv2.rectangle(frame, refPt[0], refPt[1], (255, 255, 0), 2)
-		cv2.imshow("frame", frame)
-		cv2.imshow("ROI", roi)
-		#cv2.waitKey(0)
-	else:
-		cv2.imshow("frame",frame)
+    elif key == ord("d"):
+        folder = 'images'
+        for the_file in os.listdir(folder):
+            file_path = os.path.join(folder, the_file)
+            try:
+                a = 0
+                if os.path.isfile(file_path):
+                    os.unlink(file_path)
+            except Exception as e:
+                print(e)
+    if len(refPt) == 2:
+        roi = clone[min(refPt[0][1], refPt[1][1]):max(refPt[1][1], refPt[0][1]), min(refPt[0][0], refPt[1][0]):max(refPt[0][0], refPt[1][0])]
+        if autodataset:
+            cv2.rectangle(frame, refPt[0], refPt[1], (255, 0, 0), 2)
+        else:
+              cv2.rectangle(frame, refPt[0], refPt[1], (255, 255, 0), 2)
+        cv2.imshow("frame", frame)
+        cv2.imshow("ROI", roi)
+        #cv2.waitKey(0)
+    else:
+        cv2.imshow("frame",frame)
 
 # When everything done, release the capture
 cap.release()
