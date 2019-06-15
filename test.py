@@ -3,11 +3,18 @@ import cv2
 import numpy as np
 import os, sys
 import time 
+import imutils
+from imutils.video import VideoStream
 
 refPt = []
 cropping = False
 calibrate = True
-
+saved = False
+autodataset = False
+i = 0
+firstFrame = None
+sdThresh = 15
+		
 def click_and_crop(event, x, y, flags, param):
 	# grab references to the global variables
 	global refPt, cropping, calibrate, text
@@ -43,8 +50,28 @@ def printtext(frame, text):
 		fontScale,
 		fontColor,
 		lineType)
+
+def distMap(frame1, frame2):
+	frame1_32 = np.float32(frame1)
+	frame2_32 = np.float32(frame2)
+	diff32 = frame1_32 - frame2_32
+	norm32 = np.sqrt(diff32[:,:,0]**2 + diff32[:,:,1]**2 + diff32[:,:,2]**2)/np.sqrt(255**2 + 255**2 + 255**2)
+	dist = np.uint8(norm32*255)
+	return dist
+
+ap = argparse.ArgumentParser()
+ap.add_argument("-v", "--video", help="path to the video file")
+ap.add_argument("-a", "--min-area", type=int, default=500, help="minimum area size")
+args = vars(ap.parse_args())
  
-cap = cv2.VideoCapture(0)
+# if the video argument is None, then we are reading from webcam
+if args.get("video", None) is None:
+	cap = VideoStream(src=0).start()
+	time.sleep(2.0)
+ 
+# otherwise, we are reading from a video file
+else:
+	cap = cv2.VideoCapture(args["video"])
 #NEED TO ANALYZE GREATEST NUMBER IN THE FOLDER
 a = 0
 mass = []
@@ -53,13 +80,25 @@ for filename in os.listdir("images"):
 	project, number = basename.split('_')
 	mass.append(int(number))
 if mass:
-    a = max(mass) + 1
+	a = max(mass) + 1
 text = "ROI is not setted"
 while(True):
 	# Capture frame-by-frame
-	ret, frame = cap.read()
-	printtext(frame, text)
+	frame = cap.read()
+	frame = frame if args.get("video", None) is None else frame[1]
 	clone = frame.copy()
+	if autodataset == True:
+		if firstFrame is None:
+			firstFrame = roi
+		dist = distMap(firstFrame, roi)
+		mod = cv2.GaussianBlur(dist, (9,9), 0)
+		_, thresh = cv2.threshold(mod, 100, 255, 0)
+		_, stDev = cv2.meanStdDev(mod)
+		if stDev > sdThresh:
+			print(stDev)
+			print("Motion detected.. Do something!!!")
+		firstFrame = roi
+	printtext(frame, text)
 	cv2.namedWindow("frame")
 	cv2.setMouseCallback("frame", click_and_crop)
 	key = cv2.waitKey(1) & 0xFF
@@ -71,7 +110,12 @@ while(True):
 		calibrate = True
 		text = "ROI is not setted"
 		cv2.destroyWindow("ROI")
+		saved = False
+		autodataset = False
 	# if the 'c' key is pressed, break from the loop
+	elif key == ord("a") and saved == True:
+		autodataset = True
+		text = "AUTODATASET COLLECTION"
 	elif key == ord("q"):
 		break
 	elif key == ord("s") and calibrate == False:
@@ -79,6 +123,7 @@ while(True):
 			cv2.imwrite( "images/ROI_" + str(a) +".jpg", roi)
 			a = a + 1
 			text = "ROI SAVED"
+			saved = True
 		except Exception as e:
 				print(e)
 
@@ -94,7 +139,10 @@ while(True):
 				print(e)
 	if len(refPt) == 2:
 		roi = clone[min(refPt[0][1], refPt[1][1]):max(refPt[1][1], refPt[0][1]), min(refPt[0][0], refPt[1][0]):max(refPt[0][0], refPt[1][0])]
-		cv2.rectangle(frame, refPt[0], refPt[1], (255, 255, 0), 2)
+		if autodataset:
+			cv2.rectangle(frame, refPt[0], refPt[1], (255, 0, 0), 2)
+		else:
+  			cv2.rectangle(frame, refPt[0], refPt[1], (255, 255, 0), 2)
 		cv2.imshow("frame", frame)
 		cv2.imshow("ROI", roi)
 		#cv2.waitKey(0)
