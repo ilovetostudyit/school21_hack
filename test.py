@@ -1,5 +1,4 @@
 import argparse
-from threading import Timer
 import cv2
 import numpy as np
 import os, sys
@@ -46,7 +45,15 @@ def printtext(frame, text):
 		lineType)
  
 cap = cv2.VideoCapture(0)
+#NEED TO ANALYZE GREATEST NUMBER IN THE FOLDER
 a = 0
+mass = []
+for filename in os.listdir("images"):
+	basename, extension = os.path.splitext(filename)
+	project, number = basename.split('_')
+	mass.append(int(number))
+if mass:
+    a = max(mass) + 1
 text = "ROI is not setted"
 while(True):
 	# Capture frame-by-frame
@@ -63,12 +70,13 @@ while(True):
 		refPt = []
 		calibrate = True
 		text = "ROI is not setted"
+		cv2.destroyWindow("ROI")
 	# if the 'c' key is pressed, break from the loop
 	elif key == ord("q"):
 		break
 	elif key == ord("s") and calibrate == False:
 		try:
-			cv2.imwrite( "images/ROI" + str(a) +".jpg", roi)
+			cv2.imwrite( "images/ROI_" + str(a) +".jpg", roi)
 			a = a + 1
 			text = "ROI SAVED"
 		except Exception as e:
@@ -79,12 +87,13 @@ while(True):
 		for the_file in os.listdir(folder):
 			file_path = os.path.join(folder, the_file)
 			try:
+				a = 0
 				if os.path.isfile(file_path):
 					os.unlink(file_path)
 			except Exception as e:
 				print(e)
 	if len(refPt) == 2:
-		roi = clone[refPt[0][1]:refPt[1][1], refPt[0][0]:refPt[1][0]]
+		roi = clone[min(refPt[0][1], refPt[1][1]):max(refPt[1][1], refPt[0][1]), min(refPt[0][0], refPt[1][0]):max(refPt[0][0], refPt[1][0])]
 		cv2.rectangle(frame, refPt[0], refPt[1], (255, 255, 0), 2)
 		cv2.imshow("frame", frame)
 		cv2.imshow("ROI", roi)
